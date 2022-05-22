@@ -805,6 +805,9 @@ SK_InitFinishCallback (void)
   else if (! lstrcmpW (SK_GetHostApp (), L"NieRAutomata.exe"))
     SK_FAR_InitPlugin ();
 
+  else if (! lstrcmpW (SK_GetHostApp (), L"LEGOLCUR_DX11.exe"))
+    SK_LCU_InitPlugin();
+
   else if (! lstrcmpW (SK_GetHostApp (), L"RiME.exe"))
     SK_REASON_InitPlugin ();
 

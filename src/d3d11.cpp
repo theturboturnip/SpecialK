@@ -535,6 +535,7 @@ _Out_opt_       ID3D11Texture2D        **ppTexture2D );
 D3D11Dev_CreateBuffer_pfn                           D3D11Dev_CreateBuffer_Original                           = nullptr;
 D3D11Dev_CreateTexture2D_pfn                        D3D11Dev_CreateTexture2D_Original                        = nullptr;
 D3D11Dev_CreateRenderTargetView_pfn                 D3D11Dev_CreateRenderTargetView_Original                 = nullptr;
+D3D11Dev_CreateDepthStencilView_pfn                 D3D11Dev_CreateDepthStencilView_Original                 = nullptr;
 D3D11Dev_CreateShaderResourceView_pfn               D3D11Dev_CreateShaderResourceView_Original               = nullptr;
 
 NvAPI_D3D11_CreateVertexShaderEx_pfn                NvAPI_D3D11_CreateVertexShaderEx_Original                = nullptr;
@@ -603,6 +604,20 @@ D3D11Dev_CreateRenderTargetView_Override (
   _Out_opt_       ID3D11RenderTargetView        **ppRTView )
 {
   return D3D11Dev_CreateRenderTargetView_Original (
+           This, pResource,
+             pDesc, ppRTView );
+}
+
+__declspec (noinline)
+HRESULT
+STDMETHODCALLTYPE
+D3D11Dev_CreateDepthStencilView_Override (
+  _In_            ID3D11Device                   *This,
+  _In_            ID3D11Resource                 *pResource,
+  _In_opt_  const D3D11_DEPTH_STENCIL_VIEW_DESC  *pDesc,
+  _Out_opt_       ID3D11DepthStencilView        **ppRTView )
+{
+  return D3D11Dev_CreateDepthStencilView_Original (
            This, pResource,
              pDesc, ppRTView );
 }
@@ -5224,6 +5239,10 @@ HookD3D11 (LPVOID user)
     DXGI_VIRTUAL_HOOK (pHooks->ppDevice, 9, "ID3D11Device::CreateRenderTargetView",
                            D3D11Dev_CreateRenderTargetView_Override, D3D11Dev_CreateRenderTargetView_Original,
                            D3D11Dev_CreateRenderTargetView_pfn);
+
+    DXGI_VIRTUAL_HOOK(pHooks->ppDevice, 10, "ID3D11Device::CreateDepthStencilView",
+                           D3D11Dev_CreateDepthStencilView_Override, D3D11Dev_CreateDepthStencilView_Original,
+                           D3D11Dev_CreateDepthStencilView_pfn);
 
     DXGI_VIRTUAL_HOOK (pHooks->ppDevice, 12, "ID3D11Device::CreateVertexShader",
                          D3D11Dev_CreateVertexShader_Override, D3D11Dev_CreateVertexShader_Original,

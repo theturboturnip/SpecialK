@@ -42,6 +42,7 @@ extern volatile LONGLONG SK_SteamAPI_CallbackRunCount;
 extern "C++" void SK_DS3_InitPlugin    (void);
 extern "C++" void SK_REASON_InitPlugin (void);
 extern "C++" void SK_FAR_InitPlugin    (void);
+extern "C++" void SK_LCU_InitPlugin    (void);
 extern "C++" void SK_FAR_FirstFrame    (void);
 
 // Disable SLI memory in Batman Arkham Knight

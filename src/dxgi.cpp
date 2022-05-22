@@ -546,6 +546,10 @@ extern "C++" HRESULT STDMETHODCALLTYPE
                   SK_FO4_PresentFirstFrame   (IDXGISwapChain *, UINT, UINT);
 
 
+extern "C++" HRESULT STDMETHODCALLTYPE
+    SK_LCU_PresentFirstFrame(IDXGISwapChain*, UINT, UINT);
+
+
 // TODO: Get this stuff out of here, it's breaking what little design work there is.
 extern "C++" void SK_DS3_InitPlugin         (void);
 extern "C++" bool SK_DS3_UseFlipMode        (void);
@@ -1800,6 +1804,9 @@ extern "C" {
       else if (! lstrcmpW (SK_GetHostApp (), L"DarkSoulsIII.exe"))
         SK_DS3_PresentFirstFrame (This, SyncInterval, flags);
 
+      else if (! lstrcmpW (SK_GetHostApp (), L"LEGOLCUR_DX11.exe"))
+        SK_LCU_PresentFirstFrame (This, SyncInterval, flags);
+
       // TODO: Clean this code up
       if ( SUCCEEDED (This->GetDevice (IID_PPV_ARGS (&pDev))) )
       {
@@ -1925,6 +1932,9 @@ extern "C" {
 
       else if (! lstrcmpW (SK_GetHostApp (), L"NieRAutomata.exe"))
         SK_FAR_PresentFirstFrame (This, SyncInterval, Flags);
+
+      else if (! lstrcmpW (SK_GetHostApp (), L"LEGOLCUR_DX11.exe"))
+        SK_LCU_PresentFirstFrame(This, SyncInterval, Flags);
 
       // TODO: Clean this code up
       if ( SUCCEEDED (This->GetDevice (IID_PPV_ARGS (&pDev))) )

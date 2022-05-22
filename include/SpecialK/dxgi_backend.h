@@ -381,6 +381,12 @@ typedef HRESULT (WINAPI *D3D11Dev_CreateRenderTargetView_pfn)(
   _In_opt_  const D3D11_RENDER_TARGET_VIEW_DESC  *pDesc,
   _Out_opt_       ID3D11RenderTargetView        **ppRTView
 );
+typedef HRESULT (WINAPI *D3D11Dev_CreateDepthStencilView_pfn)(
+  _In_            ID3D11Device                   *This,
+  _In_            ID3D11Resource                 *pResource,
+  _In_opt_  const D3D11_DEPTH_STENCIL_VIEW_DESC  *pDesc,
+  _Out_opt_       ID3D11DepthStencilView        **ppRTView
+);
 typedef void (WINAPI *D3D11_RSSetScissorRects_pfn)(
   _In_           ID3D11DeviceContext *This,
   _In_           UINT                 NumRects,
@@ -510,6 +516,7 @@ typedef void (WINAPI *D3D11_DrawInstancedIndirect_pfn)(
 extern D3D11Dev_CreateBuffer_pfn                          D3D11Dev_CreateBuffer_Original;
 extern D3D11Dev_CreateTexture2D_pfn                       D3D11Dev_CreateTexture2D_Original;
 extern D3D11Dev_CreateRenderTargetView_pfn                D3D11Dev_CreateRenderTargetView_Original;
+extern D3D11Dev_CreateDepthStencilView_pfn                D3D11Dev_CreateDepthStencilView_Original;
 extern D3D11Dev_CreateShaderResourceView_pfn              D3D11Dev_CreateShaderResourceView_Original;
 
 extern D3D11Dev_CreateVertexShader_pfn                    D3D11Dev_CreateVertexShader_Original;
