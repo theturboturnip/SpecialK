@@ -664,6 +664,7 @@
     <None Include="CHANGELOG" />
     <None Include="README.md" />
     <None Include="TODO" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource\Resource.rc">
