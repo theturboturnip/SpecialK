@@ -823,6 +823,9 @@ SK_InitFinishCallback (void)
     case SK_GAME_ID::DarkSouls3:
       SK_DS3_InitPlugin ();
       break;
+    case SK_GAME_ID::LEGOCityUndercover:
+      SK_LCU_InitPlugin ();
+      break;
 #else
     case SK_GAME_ID::Tales_of_Zestiria:
       SK_GetCommandProcessor ()->ProcessCommandFormatted (
