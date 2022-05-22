@@ -139,7 +139,6 @@ SK_LCU_CreateTexture2D(
             && (pInitialData == nullptr)
             && (pDesc->MipLevels == 1)
             && (pDesc->ArraySize == 1)
-            && false
             )
         {
             SK_LOG2((L"Cascaded Shadowmap Tex (%lux%lu : %lu)",
