@@ -2659,6 +2659,8 @@ SK_GetSteamDir (void)
 std::string
 SK_UseManifestToGetAppName (uint32_t appid)
 {
+  return "fake";
+
   typedef char* steam_library_t [MAX_PATH];
   static bool   scanned_libs = false;
 
