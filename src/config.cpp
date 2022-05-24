@@ -902,7 +902,7 @@ SK_CreateINIParameter ( const wchar_t *wszDescription,
 
   auto ret =
     dynamic_cast <_Tp *> (
-      g_ParameterFactory->create_parameter <_Tp::value_type> (
+      g_ParameterFactory->create_parameter <typename _Tp::value_type> (
         wszDescription )
     );
 
