@@ -15,18 +15,22 @@ SK_SetPluginName(std::wstring name);
 
 // Concept:
 // Hook ID3D11Device::CreateTexture2D: Scale the texture dimensions up, remember the pointers to those textures
+static std::unordered_set<ID3D11Texture2D*> scaledTex;
 // Hook ID3D11Device::CreateDepthStencilView, ID3D11Device::CreateRenderTargetView, remember the pointers to the resulting views if they used our hooked textures
+static std::unordered_set<ID3D11RenderTargetView*> scaledColorRT;
+static std::unordered_set<ID3D11DepthStencilView*> scaledDepthRT;
 // Hook ID3D11DeviceContext::OMSetRenderTargets, set a static flag if we've set the rendertargets to the hooked views
+static bool renderingScaled = false;
 // If the "rendering to the shadowmap" flag is set
 //    Hook ID3D11DeviceContext::RSSetViewports, ID3D11DeviceContext::RSSetScissorRects and multiply all coordinates by LCU_SHADOWMAP_SCALE.
 //
 // The shadowmap is actually used by one shader only: the final deferred combine pass.
-// Unfortunately this pass hardcodes the 1024x4096 values
-// ID3D11Device::CreatePixelShader uses a shader with 6764 bytes of bytecode.
-// => Hook CreatePixelShader to insert our own. We'll do this later, because it requires disassembling and rewriting the shader.
+// I thought this pass hardcodes the 1024x4096 values, but it seems like it actually doesn't? Odd...
+
+// The above variables can all be static because the game uses the D3D11 "immediate context" i.e. single-threaded rendering.
+// The only issue is leaks - should really hook the Destroy... equivalents to remove their pointers from the sets.
 
 // TO OVERRIDE
-// ID3D11Device::CreatePixelShader
 // ID3D11Device::CreateTexture2D
 // ID3D11Device::CreateRenderTargetView
 // ID3D11Device::CreateDepthStencilView
@@ -35,7 +39,6 @@ SK_SetPluginName(std::wstring name);
 // ID3D11DeviceContext::RSSetScissorRects (RenderDoc calls it RSSetScissors?)
 
 // Pointers to original functions
-// ID3D11Device::CreatePixelShader - TODO
 
 // ID3D11Device::CreateTexture2D - has a SpecialK override
 // The pointer to the original function.
@@ -123,6 +126,7 @@ SK_LCU_CreateTexture2D(
 
     // Define this outside the switch scope so we can use it after the switch completes.
     D3D11_TEXTURE2D_DESC copy = *pDesc;
+    bool scaled = false;
 
     constexpr UINT ColorBindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
     constexpr UINT DepthBindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
@@ -149,6 +153,7 @@ SK_LCU_CreateTexture2D(
             copy.Height = (UINT)(copy.Height * LCU_SHADOWMAP_SCALE);
 
             pDesc = &copy;
+            scaled = true;
         }
     } break;
     }
@@ -156,6 +161,10 @@ SK_LCU_CreateTexture2D(
     HRESULT hr = _D3D11Dev_CreateTexture2D_Original(This,
         pDesc, pInitialData,
         ppTexture2D);
+
+    if (scaled) {
+        scaledTex.insert(*ppTexture2D);
+    }
 
     return hr;
 }
@@ -169,9 +178,19 @@ SK_LCU_CreateRenderTargetView(
     _In_opt_  const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
     _Out_opt_       ID3D11RenderTargetView** ppRTView)
 {
-    return _D3D11Dev_CreateRenderTargetView_Original(
+    HRESULT res = _D3D11Dev_CreateRenderTargetView_Original(
         This, pResource,
         pDesc, ppRTView);
+
+    if (pDesc != nullptr && pDesc->ViewDimension == D3D11_RTV_DIMENSION_TEXTURE2D &&
+        (pDesc->Format == DXGI_FORMAT_R8G8B8A8_UNORM) && scaledTex.contains(reinterpret_cast<ID3D11Texture2D*>(pResource))) {
+        scaledColorRT.insert(*ppRTView);
+        SK_LOG2((L"Scaled Color Target (%p)",
+            *ppRTView),
+            L"LCU");
+    }
+
+    return res;
 }
 
 __declspec (noinline)
@@ -181,11 +200,21 @@ SK_LCU_CreateDepthStencilView(
     _In_            ID3D11Device* This,
     _In_            ID3D11Resource* pResource,
     _In_opt_  const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
-    _Out_opt_       ID3D11DepthStencilView** ppRTView)
+    _Out_opt_       ID3D11DepthStencilView** ppDSView)
 {
-    return _D3D11Dev_CreateDepthStencilView_Original(
+    HRESULT res = _D3D11Dev_CreateDepthStencilView_Original(
         This, pResource,
-        pDesc, ppRTView);
+        pDesc, ppDSView);
+
+    if (pDesc != nullptr && pDesc->ViewDimension == D3D11_DSV_DIMENSION_TEXTURE2D &&
+        (pDesc->Format == DXGI_FORMAT_D24_UNORM_S8_UINT) && scaledTex.contains(reinterpret_cast<ID3D11Texture2D*>(pResource))) {
+        scaledDepthRT.insert(*ppDSView);
+        //SK_LOG2((L"Scaled Depth Target (%p)",
+        //    *ppDSView),
+        //    L"LCU");
+    }
+
+    return res;
 }
 
 __declspec (noinline)
@@ -199,6 +228,22 @@ SK_LCU_OMSetRenderTargets(
 {
     _D3D11_OMSetRenderTargets_Original(This, NumViews,
         ppRenderTargetViews, pDepthStencilView);
+
+    if (NumViews == 4 &&
+        scaledColorRT.contains(ppRenderTargetViews[0]) &&
+        scaledDepthRT.contains(pDepthStencilView)) {
+
+        //static bool hasLogged = false;
+        //if (!hasLogged) {
+        //    SK_LOG2((L"Scaled Render Target (%p, %p)",
+        //        ppRenderTargetViews[0], pDepthStencilView),
+        //        L"LCU");
+        //    hasLogged = true;
+        //}
+        renderingScaled = true;
+    } else {
+        renderingScaled = false;
+    }
 }
 
 __declspec (noinline)
@@ -209,6 +254,26 @@ SK_LCU_RSSetViewports(
     UINT                 NumViewports,
     const D3D11_VIEWPORT* pViewports)
 {
+    D3D11_VIEWPORT copy;
+
+    if (NumViewports == 1 && renderingScaled) {
+        copy = *pViewports;
+        copy.TopLeftX *= LCU_SHADOWMAP_SCALE;
+        copy.TopLeftY *= LCU_SHADOWMAP_SCALE;
+        copy.Width *= LCU_SHADOWMAP_SCALE;
+        copy.Height *= LCU_SHADOWMAP_SCALE;
+
+        static bool hasLogged = false;
+        if (!hasLogged) {
+            SK_LOG2((L"Scaled Viewport (%f, %f, %f, %f) -> (%f, %f, %f, %f)",
+                pViewports->TopLeftX, pViewports->TopLeftY, pViewports->Width, pViewports->Height, copy.TopLeftX, copy.TopLeftY, copy.Width, copy.Height),
+                L"LCU");
+            hasLogged = true;
+        }
+
+        pViewports = &copy;
+    }
+
     return _D3D11_RSSetViewports_Original(This, NumViewports, pViewports);
 }
 
@@ -220,6 +285,26 @@ SK_LCU_RSSetScissorRects(
     UINT                 NumRects,
     const D3D11_RECT* pRects)
 {
+    D3D11_RECT copy;
+
+    if (NumRects == 1 && renderingScaled) {
+        copy = *pRects;
+        copy.left *= LCU_SHADOWMAP_SCALE;
+        copy.top *= LCU_SHADOWMAP_SCALE;
+        copy.right *= LCU_SHADOWMAP_SCALE;
+        copy.bottom *= LCU_SHADOWMAP_SCALE;
+
+        static bool hasLogged = false;
+        if (!hasLogged) {
+            SK_LOG2((L"Resized Scissor (%l, %l, %l, %l) -> (%l, %l, %l, %l)",
+                pRects->left, pRects->top, pRects->right, pRects->bottom, copy.left, copy.top, copy.right, copy.bottom),
+                L"LCU");
+            hasLogged = true;
+        }
+
+        pRects = &copy;
+    }
+
     return _D3D11_RSSetScissorRects_Original(This, NumRects, pRects);
 }
 
@@ -231,7 +316,6 @@ SK_LCU_InitPlugin(void)
     SK_LOG0((LCU_VERSION_STR),
         L"LCU");
 
-    // ID3D11Device::CreatePixelShader - TODO
     // ID3D11Device::CreateTexture2D
     // ID3D11Device::CreateRenderTargetView
     // ID3D11Device::CreateDepthStencilView
